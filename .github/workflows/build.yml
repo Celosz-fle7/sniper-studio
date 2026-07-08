@@ -1,29 +1,48 @@
-name: Build APK
+name: Bootstrap Flutter Project
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
+
+permissions:
+  contents: write
 
 jobs:
-  build:
+  bootstrap:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - uses: subosito/flutter-action@v2
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
           channel: stable
 
-      - run: flutter pub get
+      - name: Create Flutter Project
+        run: |
+          if [ ! -d "android" ]; then
+            echo "Creating Flutter project..."
+            flutter create \
+              --project-name sniper_studio \
+              --org com.sniper \
+              .
+          else
+            echo "Flutter project already exists."
+          fi
 
-      - run: flutter analyze
+      - name: Commit Generated Project
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - run: flutter build apk --release
+          git add .
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: sniper-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          if git diff --cached --quiet; then
+            echo "Nothing to commit."
+          else
+            git commit -m "Bootstrap Flutter project"
+            git push
+          fi
